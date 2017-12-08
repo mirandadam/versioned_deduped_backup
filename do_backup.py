@@ -17,13 +17,22 @@ import hashlib
 import re
 import datetime
 import shutil
+import itertools
+import argparse
+
 assert sys.version_info > (3, 4)  # TODO: properly require python 3.5 or later
 
-
 # user configuration:
-source_folder = '/home/a/Desktop/desktop'
-output_folder = '/home/a/Desktop/inv'
-log_file = output_folder + os.sep + '2017-09-03_inventory_status.txt'
+parser = argparse.ArgumentParser(description='Folder backup with versioning and deduplication')
+parser.add_argument('log_file', nargs=1,  help='the log file that stores the file metadata')
+parser.add_argument('output_folder', nargs=1,  help='folder to store the backup as a tree of files renamed according to their hash')
+parser.add_argument('source_folders', metavar='source_folder', nargs='+',  help='original folders to be backed up')
+
+args = parser.parse_args()
+
+source_folders = list(i.rstrip(os.sep) for i in args.source_folders)
+output_folder = args.output_folder[0].rstrip(os.sep)
+log_file = args.log_file[0]
 # end of user configuration.
 
 name_validator = re.compile('[0-9a-f]{64}')  # sha256 lowercase hash
@@ -121,7 +130,7 @@ print(len(files_in_output), 'files found in output folder.')
 
 print('Scanning for files in the source folder...')
 backlog = set()
-for root, dirs, files in os.walk(source_folder):
+for root, dirs, files in itertools.chain.from_iterable(map(os.walk, source_folders)):
     for f in files:
         backlog.add(root + os.sep + f)
 print(len(backlog), 'files in the source folder.')
@@ -135,20 +144,23 @@ print(len(backlog), 'files to process.')
 
 f = open(log_file, 'a')  # open for appending, create if not exists
 for i in backlog:
-    # print(i)
-    m = datetime.datetime.fromtimestamp(os.stat(i).st_mtime).isoformat()
-    # print(m)
-    h, s = calculate_hash(i)
-    #print(h, s)
-    assert s == os.stat(i).st_size  # TODO: check if this is always true. I am still wary that st_size might include slack space or filesystem structures.
-    if h not in files_in_output:
-        destination_file = make_path(h, output_folder)
-        if not os.path.exists(os.path.dirname(destination_file)):
-            os.makedirs(os.path.dirname(destination_file))
-        shutil.copy(i, destination_file)
-        files_in_output.add(h)
-    f.write('\t'.join([h, str(s), m, i]) + '\n')
-    f.flush()
+    try:
+        # print(i)
+        m = datetime.datetime.fromtimestamp(os.stat(i).st_mtime).isoformat()
+        # print(m)
+        h, s = calculate_hash(i)
+        #print(h, s)
+        assert s == os.stat(i).st_size  # TODO: check if this is always true. I am still wary that st_size might include slack space or filesystem structures.
+        if h not in files_in_output:
+            destination_file = make_path(h, output_folder)
+            if not os.path.exists(os.path.dirname(destination_file)):
+                os.makedirs(os.path.dirname(destination_file))
+            shutil.copy(i, destination_file)
+            files_in_output.add(h)
+        f.write('\t'.join([h, str(s), m, i]) + '\n')
+        f.flush()
+    except Exception as e:
+        print(e)
 f.close()
 
 print('Finished processing.')
