@@ -128,12 +128,12 @@ for root, dirs, files in os.walk(output_folder):
 print(len(files_in_output), 'files found in output folder.')
 
 
-print('Scanning for files in the source folder...')
+print('Scanning for files in the source folders...')
 backlog = set()
 for root, dirs, files in itertools.chain.from_iterable(map(os.walk, source_folders)):
     for f in files:
         backlog.add(root + os.sep + f)
-print(len(backlog), 'files in the source folder.')
+print(len(backlog), 'files in the source folders.')
 
 
 already_processed_files = set(i[3] for i in current_log)
@@ -143,7 +143,7 @@ backlog.difference_update(already_processed_files)
 print(len(backlog), 'files to process.')
 
 f = open(log_file, 'a')  # open for appending, create if not exists
-for i in backlog:
+for i in sorted(backlog):
     try:
         # print(i)
         m = datetime.datetime.fromtimestamp(os.stat(i).st_mtime).isoformat()
