@@ -82,7 +82,17 @@ def make_path(h, root_folder):
 raw_log = []
 if os.path.isfile(log_file):
     print('Reading existing log at ' + log_file)
-    raw_log = list(i.rstrip('\r\n ').split('\t', 3) for i in open(log_file, 'r', encoding = 'utf-8').readlines())
+    raw_log = []
+    for i in open(log_file, 'rb').readlines():
+        s = ''
+        try:
+            s = i.decode('utf-8')
+            s = s.rstrip('\r\n ').split('\t', 3)
+            raw_log.append(s)
+        except UnicodeDecodeError:
+            print('error decoding line as utf-8:\n', repr(i))
+        del i, s
+    #raw_log = list(i.rstrip('\r\n ').split('\t', 3) for i in open(log_file, 'r', encoding='utf-8').readlines())
     print(len(raw_log), 'files found in log.')
 else:
     print('No log file found to continue. Starting from the beginning.')
@@ -142,7 +152,7 @@ if already_processed_files:
 backlog.difference_update(already_processed_files)
 print(len(backlog), 'files to process.')
 
-f = open(log_file, 'a', encoding = 'utf-8')  # open for appending, create if not exists
+f = open(log_file, 'a', encoding='utf-8')  # open for appending, create if not exists
 for i in sorted(backlog):
     try:
         # print(i)
